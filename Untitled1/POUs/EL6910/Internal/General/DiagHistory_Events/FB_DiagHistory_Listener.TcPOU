@@ -1,0 +1,244 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4024.12">
+  <POU Name="FB_DiagHistory_Listener" Id="{13418922-2ea9-4ca6-8772-db298dda53a8}" SpecialFunc="None">
+    <Declaration><![CDATA[// ================================================================================================ //
+//							Beckhoff Automation Poland                                              //
+//									26.03.2021                                                      //
+//												                                                    //
+//				Function Block to get certain Event Logger messages from EterCAT slave				//
+//												                                                    //
+//	FB reads parameters & errors (avaliable also in module's Diag History) via Event Logger         //
+// 		Eg. 16#3809 - 	'FB 1 (ESTOP): An DiscTime-Fault (0x0001) was detected in state DELAYOUT, 	//
+//						the actual EStopIn-values are 0x0000'                                       //
+//                                                                                                  //
+//	                                                                                                //
+//	Author: Piotr Szyszka (p.szyszka@beckhoff.pl) & Patryk Supel (p.supel@beckhoff.pl)				//
+//	Requirements: Libraries Tc3_EventLogger				                                   			//
+//                                                                                                  //
+//  v1.0	|| TC v 3.1.4024.12		||	First release												// 
+// ================================================================================================ //
+FUNCTION_BLOCK FB_DiagHistory_Listener EXTENDS FB_ListenerBase2
+VAR_INPUT
+	sSourceFilter			: STRING;	// filter events by this source
+END_VAR
+
+VAR_OUTPUT
+	aStSavedEvents			: ARRAY [1..GVL_DiagHistory_SafetyEvents.MAX_EVENTS] OF ST_DiagHistory_Event;	// output array
+END_VAR
+
+VAR
+	nCntMessagesSent		: UINT;		// messages sent counter
+	nCntMessagesNow			: UINT;		// messages sent at once counter
+	nCntMessagesSaved		: UINT;		// messages saved in output array counter
+	
+	nCntRequestReturn		: UINT;		// internal counter, used to delay output queue, and get event text before
+	
+	nIdx					: UINT;		// index, used in for loops
+	
+	bReqText				: ARRAY [1..GVL_DiagHistory_SafetyEvents.MAX_CURR] OF BOOL;	// request event text flag
+	
+	aStCachedEvents			: ARRAY [1..GVL_DiagHistory_SafetyEvents.MAX_CURR] OF ST_DiagHistory_Event;	// cached event structure
+	
+	SystemTime				: T_FILETIME;						// system time structure
+	fbGetSystemTime			: GETSYSTEMTIME;					// get system time fb
+	fbRequestEventText		: ARRAY [1..GVL_DiagHistory_SafetyEvents.MAX_CURR] OF FB_RequestEventText;	// request event text fb
+END_VAR
+]]></Declaration>
+    <Implementation>
+      <ST><![CDATA[]]></ST>
+    </Implementation>
+    <Method Name="ClearOutput" Id="{6115e119-6e62-4c8e-ba50-99ca5e484188}">
+      <Declaration><![CDATA[METHOD ClearOutput : HRESULT
+VAR_INPUT
+END_VAR
+]]></Declaration>
+      <Implementation>
+        <ST><![CDATA[MEMSET(ADR(aStSavedEvents), 16#00, SIZEOF(aStSavedEvents));]]></ST>
+      </Implementation>
+    </Method>
+    <Method Name="Execute" Id="{c1d7dc68-c5eb-4177-8225-9470838c6f48}">
+      <Declaration><![CDATA[METHOD Execute : HRESULT
+]]></Declaration>
+      <Implementation>
+        <ST><![CDATA[// Retrieve events
+Execute := SUPER^.Execute();
+
+// Reset retrieved text counter
+nCntRequestReturn := 0;
+
+// Retrieve the text of queued messages
+FOR nIdx := 1 TO nCntMessagesNow DO
+	// If requested, and error
+	IF 	bReqText[nIdx] AND fbRequestEventText[nIdx].bError THEN
+		// Reset request flag
+		bReqText[nIdx] := FALSE;
+		// Show error message
+		aStCachedEvents[nIdx].EventText := 'Error retrieve event text';
+		nCntRequestReturn := nCntRequestReturn + 1;
+	// If requested and retrieved
+	ELSIF bReqText[nIdx] AND NOT fbRequestEventText[nIdx].bBusy THEN
+		// Get retrieved text
+		fbRequestEventText[nIdx].GetString(aStCachedEvents[nIdx].EventText, SIZEOF(aStCachedEvents[nIdx].EventText));
+		// Reset request flag
+		bReqText[nIdx] := FALSE;
+		// Increase retrieved text counter
+		nCntRequestReturn := nCntRequestReturn + 1;
+	END_IF
+END_FOR
+
+// If catched events are present, and all requests are retrevied ...
+IF nCntMessagesSent > nCntMessagesSaved AND nCntRequestReturn = nCntMessagesNow THEN
+	// Reset catched events number
+	nCntMessagesSaved := nCntMessagesSent;
+	// Move output array
+	MEMMOVE(ADR(aStSavedEvents[nCntMessagesNow + 1]), ADR(aStSavedEvents[1]), SIZEOF(aStSavedEvents[1]) * (GVL_DiagHistory_SafetyEvents.MAX_CURR - nCntMessagesNow));
+	// Move catched events to output array
+	FOR nIdx := 1 TO nCntMessagesNow DO
+		aStSavedEvents[nIdx] := aStCachedEvents[nIdx];
+	END_FOR
+	// Reset current catched events counter
+	nCntMessagesNow := 0;
+END_IF
+]]></ST>
+      </Implementation>
+    </Method>
+    <Method Name="OnMessageSent" Id="{7c60b802-cd94-4840-a003-f6022dfff719}">
+      <Declaration><![CDATA[METHOD OnMessageSent : HRESULT
+
+VAR_INPUT
+	fbEvent : REFERENCE TO FB_TcEvent;
+END_VAR
+]]></Declaration>
+      <Implementation>
+        <ST><![CDATA[// If source is different that desired module, skip this event
+IF fbEvent.ipSourceInfo.sName = sSourceFilter THEN
+	// If possible, count handled events
+	IF (nCntMessagesSent + 1) < 65535 THEN
+		nCntMessagesSent	:= nCntMessagesSent + 1;
+	// If counter overflow, reset counters and continue work ...
+	ELSE
+		nCntMessagesSent	:= 1;
+		nCntMessagesSaved	:= 0;
+	END_IF
+	
+	// If messages at once are less than max...
+	IF nCntMessagesNow + 1 <= GVL_DiagHistory_SafetyEvents.MAX_CURR THEN
+		// Increase messages at once counter (if no delay between events, this method will be called more than once, so we use iterator to handle more events at once)
+		nCntMessagesNow	:= nCntMessagesNow + 1;
+		
+		// Request event text
+		fbRequestEventText[nCntMessagesNow].Request(
+			eventClass	:= fbEvent.EventClass,
+			nEventId	:= fbEvent.nEventId,
+			nLangId		:= 1033,
+			ipArgs		:= fbEvent.ipArguments
+		);
+		
+		// Set request flag
+		bReqText[nCntMessagesNow] := TRUE;
+		
+		// Save event data
+		aStCachedEvents[nCntMessagesNow].EventID	:= fbEvent.nEventId;
+		aStCachedEvents[nCntMessagesNow].eSeverity	:= fbEvent.eSeverity;
+		
+		// Get current system time
+		fbGetSystemTime(
+			timeLoDW => SystemTime.dwLowDateTime,
+			timeHiDW => SystemTime.dwHighDateTime );
+		
+		// Save current system time, as event raised time
+		aStCachedEvents[nCntMessagesNow].TimeRaised	:= FILETIME_TO_DT(SystemTime); // Convert time to DateTime format
+	
+		// Set output
+		OnMessageSent	:= S_OK; // in order to receive more callbacks (Set <> S_OK in order to cancel the callbacks for this program cycle.)
+	ELSE
+		OnMessageSent	:= E_FAIL;
+	END_IF
+END_IF
+]]></ST>
+      </Implementation>
+    </Method>
+    <LineIds Name="FB_DiagHistory_Listener">
+      <LineId Id="59" Count="0" />
+    </LineIds>
+    <LineIds Name="FB_DiagHistory_Listener.ClearOutput">
+      <LineId Id="5" Count="0" />
+    </LineIds>
+    <LineIds Name="FB_DiagHistory_Listener.Execute">
+      <LineId Id="110" Count="0" />
+      <LineId Id="6" Count="0" />
+      <LineId Id="108" Count="0" />
+      <LineId Id="93" Count="1" />
+      <LineId Id="100" Count="0" />
+      <LineId Id="43" Count="0" />
+      <LineId Id="46" Count="0" />
+      <LineId Id="102" Count="0" />
+      <LineId Id="9" Count="0" />
+      <LineId Id="101" Count="0" />
+      <LineId Id="11" Count="0" />
+      <LineId Id="103" Count="0" />
+      <LineId Id="67" Count="0" />
+      <LineId Id="116" Count="0" />
+      <LineId Id="104" Count="0" />
+      <LineId Id="12" Count="0" />
+      <LineId Id="105" Count="0" />
+      <LineId Id="13" Count="0" />
+      <LineId Id="106" Count="0" />
+      <LineId Id="14" Count="0" />
+      <LineId Id="107" Count="0" />
+      <LineId Id="86" Count="0" />
+      <LineId Id="15" Count="0" />
+      <LineId Id="47" Count="0" />
+      <LineId Id="80" Count="0" />
+      <LineId Id="72" Count="0" />
+      <LineId Id="87" Count="0" />
+      <LineId Id="111" Count="0" />
+      <LineId Id="88" Count="0" />
+      <LineId Id="112" Count="0" />
+      <LineId Id="89" Count="0" />
+      <LineId Id="113" Count="0" />
+      <LineId Id="90" Count="2" />
+      <LineId Id="114" Count="0" />
+      <LineId Id="98" Count="0" />
+      <LineId Id="75" Count="0" />
+      <LineId Id="118" Count="0" />
+    </LineIds>
+    <LineIds Name="FB_DiagHistory_Listener.OnMessageSent">
+      <LineId Id="140" Count="0" />
+      <LineId Id="127" Count="0" />
+      <LineId Id="141" Count="0" />
+      <LineId Id="108" Count="0" />
+      <LineId Id="10" Count="0" />
+      <LineId Id="142" Count="0" />
+      <LineId Id="111" Count="2" />
+      <LineId Id="110" Count="0" />
+      <LineId Id="149" Count="0" />
+      <LineId Id="153" Count="0" />
+      <LineId Id="137" Count="1" />
+      <LineId Id="32" Count="0" />
+      <LineId Id="83" Count="0" />
+      <LineId Id="134" Count="0" />
+      <LineId Id="24" Count="0" />
+      <LineId Id="47" Count="3" />
+      <LineId Id="76" Count="0" />
+      <LineId Id="136" Count="0" />
+      <LineId Id="135" Count="0" />
+      <LineId Id="14" Count="0" />
+      <LineId Id="69" Count="0" />
+      <LineId Id="57" Count="0" />
+      <LineId Id="60" Count="1" />
+      <LineId Id="68" Count="0" />
+      <LineId Id="62" Count="3" />
+      <LineId Id="67" Count="0" />
+      <LineId Id="139" Count="0" />
+      <LineId Id="58" Count="0" />
+      <LineId Id="128" Count="0" />
+      <LineId Id="39" Count="0" />
+      <LineId Id="31" Count="0" />
+      <LineId Id="40" Count="0" />
+      <LineId Id="151" Count="1" />
+      <LineId Id="150" Count="0" />
+      <LineId Id="159" Count="0" />
+    </LineIds>
+  </POU>
+</TcPlcObject>

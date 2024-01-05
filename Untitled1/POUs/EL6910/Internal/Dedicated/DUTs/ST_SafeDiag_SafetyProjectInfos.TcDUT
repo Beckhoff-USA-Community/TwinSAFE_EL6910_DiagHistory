@@ -1,0 +1,28 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4024.12">
+  <DUT Name="ST_SafeDiag_SafetyProjectInfos" Id="{75402c80-d271-44d2-84da-5a5b19c07421}">
+    <Declaration><![CDATA[TYPE ST_SafeDiag_SafetyProjectInfos :
+STRUCT
+	// FSLOGIC status
+	wSafeLogicState									: WORD;				// CoE - F100:01
+	eSafeLogicState									: E_SafeLogicState; // Reference to CoE F100:01
+	wCycleCounter									: WORD;				// CoE - F100:02
+	
+	// Module internal Safety Task status (CTRL Diag Data)
+	uliActualSafetyControlTaskExecution				: ULINT;			// CoE - FEA0:09
+	uliMinSafetyControlTaskExecutionTime_Run		: ULINT;  			// CoE - FEA0:0A
+	uliMinSafetyControlTaskExecutionTime_NotRun		: ULINT;  			// CoE - FEA0:16
+	uliActualSafetyControlTaskExecutionTime_Run		: ULINT;  			// CoE - FEA0:0C
+	uliActualSafetyControlTaskExecutionTime_NotRun	: ULINT;  			// CoE - FEA0:15
+	
+	// Times converted from Distributed Clock Time (DcTime) to TIMSTRUCT
+	stActualSafetyControlTaskExecution				: TIMESTRUCT;		// CoE - FEA0:09	(DC Time converted to Timestruct)
+	stMinSafetyControlTaskExecutionTime_Run			: TIMESTRUCT;  		// CoE - FEA0:0A    (DC Time converted to Timestruct)
+	stMinSafetyControlTaskExecutionTime_NotRun		: TIMESTRUCT;  		// CoE - FEA0:16    (DC Time converted to Timestruct)
+	stActualSafetyControlTaskExecutionTime_Run		: TIMESTRUCT;  		// CoE - FEA0:0C    (DC Time converted to Timestruct)
+	stActualSafetyControlTaskExecutionTime_NotRun	: TIMESTRUCT;  		// CoE - FEA0:15    (DC Time converted to Timestruct)
+END_STRUCT
+END_TYPE
+]]></Declaration>
+  </DUT>
+</TcPlcObject>

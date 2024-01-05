@@ -1,0 +1,14 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4024.12">
+  <DUT Name="ST_SafeDiag_HardwareInfos" Id="{e6678f16-c359-47d9-ba9f-43e7b55499d0}">
+    <Declaration><![CDATA[TYPE ST_SafeDiag_HardwareInfos :
+STRUCT
+	iVoltageC1				: INT;		// CoE - F985:01	[mV]	
+	iVoltageC2				: INT;		// CoE - F984:01	[mV]		
+	iTemperatureC1			: INT;		// CoE - F984:02	[Celcius degrees]   
+	iTemperatureC2			: INT;		// CoE - F985:02    [Celcius degrees]
+END_STRUCT
+END_TYPE
+]]></Declaration>
+  </DUT>
+</TcPlcObject>

@@ -1,0 +1,171 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4024.12">
+  <POU Name="FB_SafeDiag_Diagnostic" Id="{2226d4c8-2ffd-40a7-a8e2-369d8227b008}" SpecialFunc="None">
+    <Declaration><![CDATA[// ================================================================================================ //
+//							Beckhoff Automation Poland                                              //
+//									26.03.2021                                                      //
+//												                                                    //
+//					Function Block to monitor & diagnose safety modules.        					//
+//					Function Block works with EL6910, EL2911, EK1960       							//
+//												                                                    //
+//	FB reads parameters & errors (avaliable also in module's Diag History) via Event Logger         //
+// 		Eg. 16#3809 - 	'FB 1 (ESTOP): An DiscTime-Fault (0x0001) was detected in state DELAYOUT, 	//
+//						the actual EStopIn-values are 0x0000'                                       //
+//                                                                                                  //
+//	All data are localised in safety modules           												//
+//	                                                                                                //
+//	Author: Piotr Szyszka (p.szyszka@beckhoff.pl)                                           		//
+//	Requirements: Libraries Tc2_EtherCAT, TC2_Utilities                                    			//
+//                                                                                                  //
+//  v2.0	|| TC v 3.1.4024.12		||	FB uses Event Listener to get EL6910 Diag Messages			// 
+//  v1.0	|| TC v 3.1.4024.7		|| 	First release. Library uses ESI file to find Diag History 	// 
+//										Message via JSON lib.                                      	//
+// ================================================================================================ //
+FUNCTION_BLOCK FB_SafeDiag_Diagnostic
+VAR_IN_OUT
+	stSafeDiag								: ST_EL6910_SafeDiag;			// Strcture with all informations about EL6910
+END_VAR
+VAR_INPUT
+	bExecute								: BOOL;
+	sEcAmsNetId								: T_AmsNetID;			// EtherCAT master's AmsNetId
+	wSlaveAdress							: WORD;					// Slave's adress in EtherCAT topology
+	sModule_GUID							: STRING(36);			// Event class of module - read from event logger message window (see manual)
+END_VAR
+VAR_OUTPUT
+	bBusy									: BOOL;
+	bError									: BOOL;
+	udiErrId								: UDINT;
+	sError									: STRING;
+END_VAR
+VAR
+	iStep									: INT;
+	iLastStep								: INT;
+	rtExecute								: R_TRIG;
+	iMsg									: INT;
+	
+	fbReadSlaveBasicInformations			: FB_ReadSlaveBasicInformations;
+	fbEL6910_HardwareInfos					: FB_HardwareInfos;
+	fbEL6910_SafetyProjectInfos				: FB_SafetyProjectInfos;
+	fbSafetyEvents							: FB_SafetyEvents;	
+	fbEL6910_Visualisation					: FB_SafeDiag_Visualisation;
+END_VAR
+]]></Declaration>
+    <Implementation>
+      <ST><![CDATA[rtExecute(CLK:= bExecute, Q=> );
+IF rtExecute.Q THEN
+	iStep												:= 0;
+END_IF
+
+CASE iStep OF
+	0:	// Idle
+		IF rtExecute.Q THEN
+			iLastStep									:= 0;
+			bBusy										:= TRUE;
+			bError										:= FALSE;
+			udiErrId									:= 0;
+			sError										:= '';		
+			
+			fbReadSlaveBasicInformations.bExecute		:= FALSE;
+			fbEL6910_HardwareInfos.bExecute				:= FALSE;
+			fbEL6910_SafetyProjectInfos.bExecute		:= FALSE;
+			
+			iStep										:= iStep + 10;
+		END_IF
+		
+	10:	// Read basic informations about EtherCAT slave
+		stSafeDiag.stBasicInfo.sEtherCat_AmsNetId			:= sEcAmsNetId;
+		fbReadSlaveBasicInformations.bExecute			:= TRUE;
+		iStep											:= iStep + 10;
+		
+	20:	// Wait to gain infos
+		fbReadSlaveBasicInformations.bExecute			:= FALSE;
+		IF NOT fbReadSlaveBasicInformations.bBusy 	THEN
+			IF NOT fbReadSlaveBasicInformations.bError	THEN
+				fbEL6910_HardwareInfos.bExecute			:= TRUE;
+				iStep									:= iStep + 10;
+			ELSE                                		
+				udiErrId								:= fbReadSlaveBasicInformations.udiErrId;
+				iLastStep								:= iStep;
+				iStep									:= 900;
+			END_IF
+		END_IF
+		
+	30:	// Read module hardware infos (Voltage, Temp)
+		fbEL6910_HardwareInfos.bExecute					:= FALSE;
+		IF NOT fbEL6910_HardwareInfos.bBusy THEN
+			IF NOT fbEL6910_HardwareInfos.bError THEN
+				fbEL6910_SafetyProjectInfos.bExecute	:= TRUE;
+				iStep									:= iStep + 10;
+			ELSE                                		
+				udiErrId								:= fbReadSlaveBasicInformations.udiErrId;
+				iLastStep								:= iStep;
+				iStep									:= 900;
+			END_IF
+		END_IF
+		
+		
+	40:	// Read module Safety Project Informations
+		fbEL6910_SafetyProjectInfos.bExecute			:= FALSE;
+		IF NOT fbEL6910_SafetyProjectInfos.bBusy THEN
+			IF NOT fbEL6910_SafetyProjectInfos.bError THEN
+				iStep									:= iStep + 10;
+			ELSE                               		
+				udiErrId								:= fbReadSlaveBasicInformations.udiErrId;
+				iLastStep								:= iStep;
+				iStep									:= 900;
+			END_IF
+		END_IF
+		
+	50:	// Check if DiagHistory - EventLogger has error
+		IF NOT fbSafetyEvents.bError THEN
+			iStep										:= 100;
+		ELSE                               		
+			iLastStep									:= iStep;
+			iStep										:= 900;
+		END_IF
+		
+	100:	// End procedure
+		bBusy											:= FALSE;
+		iStep											:= 0;
+		
+	900:	// Error procedure
+		bBusy											:= FALSE;
+		bError											:= TRUE;
+	ELSE                                        		
+		iLastStep										:= iStep;
+		iStep											:= 900;
+END_CASE
+
+
+fbReadSlaveBasicInformations(
+	stEtherCatSlaveBasicInfos	:= stSafeDiag.stBasicInfo, 
+	sEcAmsNetId					:= stSafeDiag.stBasicInfo.sEtherCat_AmsNetId, 
+	wSlaveAdress				:= wSlaveAdress);
+	
+fbEL6910_HardwareInfos(
+	stEtherCatSlaveBasicInfos	:= stSafeDiag.stBasicInfo, 
+	stHardwareInfo				:= stSafeDiag.stHardwareInfo,
+	tAutoRefreshTime			:= T#60S);
+	
+fbEL6910_SafetyProjectInfos(
+	stEtherCatSlaveBasicInfos	:= stSafeDiag.stBasicInfo, 
+	stSafetyInfos				:= stSafeDiag.stSafetyInfo,
+	tAutoRefreshTime			:= T#5S);
+	
+fbSafetyEvents(
+	sModuleName					:= stSafeDiag.stBasicInfo.stSlaveCfgData.sName, 
+	sEventClass					:= sModule_GUID,
+	aStEventsData				=> stSafeDiag.arrDiagHistory, 
+	bError						=> );
+
+fbEL6910_Visualisation(
+	stSafeDiag					:= stSafeDiag, 
+	bRefresh					:= , 
+	tAutoRefreshTime			:= );]]></ST>
+    </Implementation>
+    <LineIds Name="FB_SafeDiag_Diagnostic">
+      <LineId Id="1123" Count="109" />
+      <LineId Id="1026" Count="0" />
+    </LineIds>
+  </POU>
+</TcPlcObject>

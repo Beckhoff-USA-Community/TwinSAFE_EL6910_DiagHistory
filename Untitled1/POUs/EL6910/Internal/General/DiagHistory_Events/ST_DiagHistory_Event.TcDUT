@@ -1,0 +1,14 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4024.12">
+  <DUT Name="ST_DiagHistory_Event" Id="{6e948a25-a8ef-473d-8d87-c1b85efd905d}">
+    <Declaration><![CDATA[TYPE ST_DiagHistory_Event :
+STRUCT
+	TimeRaised				: DT;				// Date & time
+	eSeverity				: TcEventSeverity;	// Type of message
+	EventID					: UDINT;			// Error/warning/message number
+	EventText				: STRING(255);		// Error description
+END_STRUCT
+END_TYPE
+]]></Declaration>
+  </DUT>
+</TcPlcObject>

@@ -1,0 +1,10 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4024.12">
+  <GVL Name="GVL_DiagHistory_SafetyEvents" Id="{ab8a8732-6d2a-4275-9161-01bdeb60b6c3}">
+    <Declaration><![CDATA[{attribute 'qualified_only'}
+VAR_GLOBAL CONSTANT
+	MAX_EVENTS				: UINT := 128;	// maximum no. of saved events
+	MAX_CURR				: UINT := 10;	// max event occurs at same time
+END_VAR]]></Declaration>
+  </GVL>
+</TcPlcObject>

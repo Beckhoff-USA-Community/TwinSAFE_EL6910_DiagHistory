@@ -1,0 +1,275 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4024.12">
+  <POU Name="FB_SafetyProjectInfos" Id="{7402fafe-a9d4-4b6b-9cf1-52a6341ba331}" SpecialFunc="None">
+    <Declaration><![CDATA[// ================================================================================================ //
+//							Beckhoff Automation Poland                                              //
+//									26.03.2021                                                      //
+//												                                                    //
+//				Function Block to get safety project infos from safety modules						//
+//				Function Block works with EL6910, EL2911, EK1960									//
+//	                                                                                                	//
+//	Author: Piotr Szyszka (p.szyszka@beckhoff.pl) 														//
+//	Requirements: Libraries Tc2_EtherCAT				                                   				//
+//                                                                                                  	//
+//  v1.0	|| TC v 3.1.4024.12		||	First release													//
+//	v1.1	|| TC v 3.1.4024.12		||	Fixed adressing for ActualSafetyControlTaskExecutionTime_Run	//
+// ====================================================================================================	//
+FUNCTION_BLOCK FB_SafetyProjectInfos
+VAR_IN_OUT
+	stEtherCatSlaveBasicInfos		: ST_EtherCat_SlaveBasicInfos;
+	stSafetyInfos					: ST_SafeDiag_SafetyProjectInfos;
+END_VAR
+VAR_INPUT
+	bExecute						: BOOL;
+	tAutoRefreshTime				: TIME		:= T#5S;			// Time to auto-refresh data. Use 0 to disable.
+END_VAR
+VAR_OUTPUT
+	bBusy							: BOOL;
+	bError							: BOOL;
+	udiErrId						: UDINT;
+END_VAR
+VAR
+	tonRefreshTime					: TON;
+	iStep							: INT;
+	iLastStep						: INT;
+	rtExecute						: R_TRIG;
+	fbEcCoESdoRead					: FB_EcCoESdoRead;
+END_VAR
+
+]]></Declaration>
+    <Implementation>
+      <ST><![CDATA[IF TIME_TO_DWORD(tAutoRefreshTime) <> 0 THEN
+	tonRefreshTime(IN:= NOT tonRefreshTime.Q, PT:= tAutoRefreshTime);
+ELSE
+	tonRefreshTime(IN:= FALSE);
+END_IF
+
+rtExecute(CLK:= bExecute OR tonRefreshTime.Q, Q=> );
+IF rtExecute.Q THEN
+	iStep										:= 0;
+END_IF
+
+
+CASE iStep OF
+	0:	// Idle
+		IF rtExecute.Q THEN
+			iLastStep							:= 0;
+			bBusy								:= TRUE;
+			bError								:= FALSE;
+			udiErrId							:= 0;
+			fbEcCoESdoRead.bExecute				:= FALSE;
+			
+			iStep								:= iStep + 10;
+		END_IF
+		
+		
+		
+		
+	10:	// Read module: 	SafeLogicState
+		fbEcCoESdoRead.nIndex 					:= 16#F100;
+		fbEcCoESdoRead.nSubIndex 				:= 01;
+		fbEcCoESdoRead.pDstBuf 					:= ADR (stSafetyInfos.wSafeLogicState);
+		fbEcCoESdoRead.cbBufLen 				:= SIZEOF(stSafetyInfos.wSafeLogicState);
+		fbEcCoESdoRead.bExecute					:= TRUE;
+		iStep									:= iStep + 10;
+		
+	20:	// Read module: 	wCycleCounter
+		fbEcCoESdoRead.bExecute					:= FALSE;
+		IF NOT fbEcCoESdoRead.bBusy THEN
+			IF NOT fbEcCoESdoRead.bError THEN
+				fbEcCoESdoRead.nIndex 			:= 16#F100;
+				fbEcCoESdoRead.nSubIndex 		:= 02;
+				fbEcCoESdoRead.pDstBuf 			:= ADR (stSafetyInfos.wCycleCounter);
+				fbEcCoESdoRead.cbBufLen 		:= SIZEOF(stSafetyInfos.wCycleCounter);
+				fbEcCoESdoRead.bExecute			:= TRUE;
+				iStep							:= iStep + 10;
+			ELSE
+				udiErrId						:= fbEcCoESdoRead.nErrId;
+				iLastStep						:= iStep;
+				iStep							:= 900;
+			END_IF
+		END_IF
+		
+	30:	// E_SafeLogicState
+		CASE 	WORD_TO_INT(stSafetyInfos.wSafeLogicState) OF
+			E_SafeLogicState.OFFLINE:			stSafetyInfos.eSafeLogicState		:= E_SafeLogicState.OFFLINE;
+			E_SafeLogicState.RUN:				stSafetyInfos.eSafeLogicState		:= E_SafeLogicState.RUN;
+			E_SafeLogicState.STOP:				stSafetyInfos.eSafeLogicState		:= E_SafeLogicState.STOP;
+			E_SafeLogicState.SAFE:				stSafetyInfos.eSafeLogicState		:= E_SafeLogicState.SAFE;
+			E_SafeLogicState.ERROR:				stSafetyInfos.eSafeLogicState		:= E_SafeLogicState.ERROR;
+			E_SafeLogicState.START:				stSafetyInfos.eSafeLogicState		:= E_SafeLogicState.START;
+			E_SafeLogicState.PREPARE:			stSafetyInfos.eSafeLogicState		:= E_SafeLogicState.PREPARE;
+			E_SafeLogicState.RESTORE:			stSafetyInfos.eSafeLogicState		:= E_SafeLogicState.RESTORE;
+			E_SafeLogicState.PROJECT_CRC_OK:	stSafetyInfos.eSafeLogicState		:= E_SafeLogicState.PROJECT_CRC_OK;
+		END_CASE
+		iStep							:= iStep + 10;
+		
+	40:	// Read module: 	wActualSafetyControlTaskExecution
+		fbEcCoESdoRead.nIndex 					:= 16#FEA0;
+		fbEcCoESdoRead.nSubIndex 				:= 09;
+		fbEcCoESdoRead.pDstBuf 					:= ADR (stSafetyInfos.uliActualSafetyControlTaskExecution);
+		fbEcCoESdoRead.cbBufLen 				:= SIZEOF(stSafetyInfos.uliActualSafetyControlTaskExecution);
+		fbEcCoESdoRead.bExecute					:= TRUE;
+		iStep									:= iStep + 10;
+		
+	50:	// Read module: 	wMinSafetyControlTaskExecutionTime_Run
+		fbEcCoESdoRead.bExecute					:= FALSE;
+		IF NOT fbEcCoESdoRead.bBusy THEN
+			IF NOT fbEcCoESdoRead.bError THEN
+				fbEcCoESdoRead.nIndex 			:= 16#FEA0;
+				fbEcCoESdoRead.nSubIndex 		:= 16#0A;
+				fbEcCoESdoRead.pDstBuf 			:= ADR (stSafetyInfos.uliMinSafetyControlTaskExecutionTime_Run);
+				fbEcCoESdoRead.cbBufLen 		:= SIZEOF(stSafetyInfos.uliMinSafetyControlTaskExecutionTime_Run);
+				fbEcCoESdoRead.bExecute			:= TRUE;
+				iStep							:= iStep + 10;
+			ELSE
+				udiErrId						:= fbEcCoESdoRead.nErrId;
+				iLastStep						:= iStep;
+				iStep							:= 900;
+			END_IF
+		END_IF
+		
+	60:	// Read module: 	wMinSafetyControlTaskExecutionTime_NotRun
+		fbEcCoESdoRead.bExecute					:= FALSE;
+		IF NOT fbEcCoESdoRead.bBusy THEN
+			IF NOT fbEcCoESdoRead.bError THEN
+				fbEcCoESdoRead.nIndex 			:= 16#FEA0;
+				fbEcCoESdoRead.nSubIndex 		:= 16#16;
+				fbEcCoESdoRead.pDstBuf 			:= ADR (stSafetyInfos.uliMinSafetyControlTaskExecutionTime_NotRun);
+				fbEcCoESdoRead.cbBufLen 		:= SIZEOF(stSafetyInfos.uliMinSafetyControlTaskExecutionTime_NotRun);
+				fbEcCoESdoRead.bExecute			:= TRUE;
+				iStep							:= iStep + 10;
+			ELSE
+				udiErrId						:= fbEcCoESdoRead.nErrId;
+				iLastStep						:= iStep;
+				iStep							:= 900;
+			END_IF
+		END_IF
+		
+	70:	// Read module: 	wActualSafetyControlTaskExecutionTime_Run
+		fbEcCoESdoRead.bExecute					:= FALSE;
+		IF NOT fbEcCoESdoRead.bBusy THEN
+			IF NOT fbEcCoESdoRead.bError THEN
+				fbEcCoESdoRead.nIndex 			:= 16#FEA0;
+				fbEcCoESdoRead.nSubIndex 		:= 16#0C;
+				fbEcCoESdoRead.pDstBuf 			:= ADR (stSafetyInfos.uliActualSafetyControlTaskExecutionTime_Run);
+				fbEcCoESdoRead.cbBufLen 		:= SIZEOF(stSafetyInfos.uliActualSafetyControlTaskExecutionTime_Run);
+				fbEcCoESdoRead.bExecute			:= TRUE;
+				iStep							:= iStep + 10;
+			ELSE
+				udiErrId						:= fbEcCoESdoRead.nErrId;
+				iLastStep						:= iStep;
+				iStep							:= 900;
+			END_IF
+		END_IF
+		
+	80:	// Read module: 	wActualSafetyControlTaskExecutionTime_NotRun
+		fbEcCoESdoRead.bExecute					:= FALSE;
+		IF NOT fbEcCoESdoRead.bBusy THEN
+			IF NOT fbEcCoESdoRead.bError THEN
+				fbEcCoESdoRead.nIndex 			:= 16#FEA0;
+				fbEcCoESdoRead.nSubIndex 		:= 16#15;
+				fbEcCoESdoRead.pDstBuf 			:= ADR (stSafetyInfos.uliActualSafetyControlTaskExecutionTime_NotRun);
+				fbEcCoESdoRead.cbBufLen 		:= SIZEOF(stSafetyInfos.uliActualSafetyControlTaskExecutionTime_NotRun);
+				fbEcCoESdoRead.bExecute			:= TRUE;
+				iStep							:= iStep + 10;
+			ELSE
+				udiErrId						:= fbEcCoESdoRead.nErrId;
+				iLastStep						:= iStep;
+				iStep							:= 900;
+			END_IF
+		END_IF
+		
+	90:	// Wait for gain infos
+		fbEcCoESdoRead.bExecute					:= FALSE;
+		IF NOT fbEcCoESdoRead.bBusy THEN
+			IF NOT fbEcCoESdoRead.bError THEN
+				iStep							:= iStep + 10;
+			ELSE
+				udiErrId						:= fbEcCoESdoRead.nErrId;
+				iLastStep						:= iStep;
+				iStep							:= 900;
+			END_IF
+		END_IF
+		
+	100:	// DC conversions
+		stSafetyInfos.stActualSafetyControlTaskExecution				:=	
+			DCTIME64_TO_SYSTEMTIME(stSafetyInfos.uliActualSafetyControlTaskExecution);
+		
+		stSafetyInfos.stMinSafetyControlTaskExecutionTime_Run			:=
+			DCTIME64_TO_SYSTEMTIME(stSafetyInfos.uliMinSafetyControlTaskExecutionTime_Run);
+		
+		
+		stSafetyInfos.stMinSafetyControlTaskExecutionTime_NotRun		:=
+			DCTIME64_TO_SYSTEMTIME(stSafetyInfos.uliMinSafetyControlTaskExecutionTime_NotRun);
+		
+		
+		stSafetyInfos.stActualSafetyControlTaskExecutionTime_Run		:=
+			DCTIME64_TO_SYSTEMTIME(stSafetyInfos.uliActualSafetyControlTaskExecutionTime_Run);
+		
+		
+		stSafetyInfos.stActualSafetyControlTaskExecutionTime_NotRun     :=
+			DCTIME64_TO_SYSTEMTIME(stSafetyInfos.uliActualSafetyControlTaskExecutionTime_NotRun);
+		
+			
+			
+		bBusy									:= FALSE;
+		iStep									:= 0;
+		
+		
+	900:	// Error procedure
+		bBusy									:= FALSE;
+		bError									:= TRUE;
+	ELSE
+		iLastStep								:= iStep;
+		iStep									:= 900;
+END_CASE
+
+
+fbEcCoESdoRead(
+	sNetId			:= stEtherCatSlaveBasicInfos.sEtherCat_AmsNetId, 
+	nSlaveAddr		:= stEtherCatSlaveBasicInfos.stSlaveCfgData.nAddr);]]></ST>
+    </Implementation>
+    <LineIds Name="FB_SafetyProjectInfos">
+      <LineId Id="253" Count="3" />
+      <LineId Id="252" Count="0" />
+      <LineId Id="251" Count="0" />
+      <LineId Id="29" Count="26" />
+      <LineId Id="89" Count="0" />
+      <LineId Id="88" Count="0" />
+      <LineId Id="58" Count="14" />
+      <LineId Id="9" Count="0" />
+      <LineId Id="73" Count="0" />
+      <LineId Id="90" Count="2" />
+      <LineId Id="95" Count="7" />
+      <LineId Id="93" Count="0" />
+      <LineId Id="104" Count="0" />
+      <LineId Id="103" Count="0" />
+      <LineId Id="106" Count="73" />
+      <LineId Id="196" Count="5" />
+      <LineId Id="209" Count="0" />
+      <LineId Id="204" Count="4" />
+      <LineId Id="180" Count="1" />
+      <LineId Id="105" Count="0" />
+      <LineId Id="75" Count="0" />
+      <LineId Id="210" Count="0" />
+      <LineId Id="193" Count="1" />
+      <LineId Id="221" Count="0" />
+      <LineId Id="214" Count="1" />
+      <LineId Id="211" Count="0" />
+      <LineId Id="222" Count="0" />
+      <LineId Id="216" Count="1" />
+      <LineId Id="212" Count="0" />
+      <LineId Id="223" Count="0" />
+      <LineId Id="218" Count="1" />
+      <LineId Id="213" Count="0" />
+      <LineId Id="224" Count="0" />
+      <LineId Id="220" Count="0" />
+      <LineId Id="227" Count="1" />
+      <LineId Id="225" Count="1" />
+      <LineId Id="195" Count="0" />
+      <LineId Id="76" Count="11" />
+      <LineId Id="74" Count="0" />
+    </LineIds>
+  </POU>
+</TcPlcObject>

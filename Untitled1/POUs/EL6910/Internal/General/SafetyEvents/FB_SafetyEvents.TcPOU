@@ -1,0 +1,95 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4024.4">
+  <POU Name="FB_SafetyEvents" Id="{3f56ea05-5d12-4cf3-aa32-b1078ff3baf8}" SpecialFunc="None">
+    <Declaration><![CDATA[FUNCTION_BLOCK FB_SafetyEvents
+VAR_INPUT
+	sModuleName			: STRING;		// module name, for example: EL6910 - 'Term 6 (EL6910)'
+	sEventClass			: STRING(36);	// event class of module, for example: EL6910 - '28111931-0002-0000-5230-FE1A00001100'
+END_VAR
+VAR_OUTPUT
+	aStEventsData		: ARRAY [1..GVL_SafetyEvents.MAX_EVENTS] OF ST_Event;	// output structure with saved events
+	bError				: BOOL;			// error flag
+END_VAR
+VAR
+	hr					: HRESULT;
+	hrLastError			: HRESULT;
+
+	sLastModuleName		: STRING;	
+    sLastEventClass		: STRING(36);
+	
+	ipMessageConfig		: ITcEventFilterConfig;	// filter interface
+	guidEventClass		: GUID;			// GUID of device
+	fbListener			: FB_Listener;	// extended listener fb
+END_VAR
+]]></Declaration>
+    <Implementation>
+      <ST><![CDATA[IF sModuleName <> sLastModuleName OR sEventClass <> sLastEventClass THEN
+	// Save last values
+	sLastModuleName := sModuleName;
+	sLastEventClass := sEventClass;
+	
+	// Clear output
+	fbListener.ClearOutput();
+	
+	// Remove listener to module event class
+	IF ipMessageConfig <> 0 THEN
+		fbListener.Unsubscribe();
+	END_IF
+	
+	// Convert event class to GUID
+	guidEventClass := STRING_TO_GUID(sEventClass);
+	
+	// Pass event source filter
+	fbListener.sSourceFilter := sModuleName;
+	
+	// If GUID is not empty, and so on...
+	IF GUID_TO_STRING(guidEventClass) <> GUID_TO_STRING(EMPTY_EVENT_CLASS) AND sModuleName <> '' THEN	
+		// Reset error flag
+		bError := FALSE;
+		
+		// Add listener to module event class
+		fbListener.Subscribe(ADR(ipMessageConfig), 0);
+		IF (ipMessageConfig <> 0) THEN
+			ipMessageConfig.AddEventClass(guidEventClass, TcEventSeverity.Verbose);
+		END_IF
+	ELSE
+		// Set error flag
+		bError := TRUE;
+	END_IF
+END_IF
+
+// Listener cyclic execute
+fbListener.Execute();
+	
+// Pass outputs from listener
+aStEventsData			:= fbListener.aStSavedEvents;]]></ST>
+    </Implementation>
+    <LineIds Name="FB_SafetyEvents">
+      <LineId Id="649" Count="0" />
+      <LineId Id="746" Count="0" />
+      <LineId Id="706" Count="1" />
+      <LineId Id="774" Count="0" />
+      <LineId Id="776" Count="0" />
+      <LineId Id="775" Count="0" />
+      <LineId Id="771" Count="0" />
+      <LineId Id="651" Count="0" />
+      <LineId Id="714" Count="0" />
+      <LineId Id="652" Count="0" />
+      <LineId Id="797" Count="0" />
+      <LineId Id="653" Count="3" />
+      <LineId Id="677" Count="0" />
+      <LineId Id="657" Count="3" />
+      <LineId Id="680" Count="0" />
+      <LineId Id="678" Count="1" />
+      <LineId Id="662" Count="1" />
+      <LineId Id="725" Count="0" />
+      <LineId Id="665" Count="1" />
+      <LineId Id="669" Count="0" />
+      <LineId Id="682" Count="0" />
+      <LineId Id="670" Count="2" />
+      <LineId Id="683" Count="0" />
+      <LineId Id="673" Count="3" />
+      <LineId Id="596" Count="0" />
+    </LineIds>
+  </POU>
+</TcPlcObject>

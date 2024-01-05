@@ -1,0 +1,39 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4024.12">
+  <DUT Name="ST_SafeDiag_VisualisationInfos" Id="{2da3a63f-f9b8-4350-9fc3-d5278af8b5c7}">
+    <Declaration><![CDATA[TYPE ST_SafeDiag_VisualisationInfos :
+STRUCT
+	// ST_EtherCat_SlaveBasicInfos
+	arrBasicInfos						: ARRAY [1..2,1..9] OF STRING(20) := [
+												'EtherCat_AmsNetId', 
+												'SlaveAdress', 
+												'DeviceName', 
+												'HardwareVersion', 
+												'SoftwareVersion', 
+												'VendorId', 
+												'ProductCode', 
+												'Revision', 
+												'SerialNumber'];
+	
+	
+	// ST_SafeDiag_HardwareInfos
+	arrHardwareInfos					: ARRAY [1..2, 1..4] OF STRING(20) := [
+												'VoltageC1 [mV]', 				 
+												'VoltageC2 [mV]', 				 
+												'TemperatureC1', 			 
+												'TemperatureC2'];
+
+	// ST_SafeDiag_SafetyProjectInfos
+	arrSafetyInfos						: ARRAY [1..2, 1..3] OF STRING(20) := [
+												'SafeLogicState',
+												'SafeLogicState', 				
+												'CycleCounter'];
+	//Model number
+	sModelNumber						:	STRING (20);	
+
+END_STRUCT
+END_TYPE
+
+]]></Declaration>
+  </DUT>
+</TcPlcObject>

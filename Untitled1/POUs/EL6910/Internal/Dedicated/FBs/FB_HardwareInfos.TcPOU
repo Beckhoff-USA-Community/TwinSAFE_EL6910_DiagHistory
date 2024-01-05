@@ -1,0 +1,188 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4024.12">
+  <POU Name="FB_HardwareInfos" Id="{e531c488-f033-4359-aaa7-720aef4dc5b3}" SpecialFunc="None">
+    <Declaration><![CDATA[// ================================================================================================ //
+//							Beckhoff Automation Poland                                              //
+//									26.03.2021                                                      //
+//												                                                    //
+//				Function Block to get hardware infos from safety modules							//
+//				Function Block works with EL6910, EL2911, EK1960									//
+//																									//
+//	FB reads parameters & errors (avaliable also in module's Diag History) via Event Logger         //
+//                                                                                                  //
+//	                                                                                                //
+//	Author: Piotr Szyszka (p.szyszka@beckhoff.pl) 													//
+//	Requirements: Libraries Tc2_EtherCAT				                                   			//
+//                                                                                                  //
+//  v1.0	|| TC v 3.1.4024.12		||	First release												// 
+// ================================================================================================ //
+FUNCTION_BLOCK FB_HardwareInfos
+VAR_IN_OUT
+	stEtherCatSlaveBasicInfos		: ST_EtherCat_SlaveBasicInfos;
+	stHardwareInfo					: ST_SafeDiag_HardwareInfos;
+END_VAR
+VAR_INPUT
+	bExecute						: BOOL;
+	tAutoRefreshTime				: TIME		:= T#5S;			// Time to auto-refresh data. Use 0 to disable.
+END_VAR
+VAR_OUTPUT
+	bBusy							: BOOL;
+	bError							: BOOL;
+	udiErrId						: UDINT;
+END_VAR
+VAR
+	tonRefreshTime					: TON;
+	iStep							: INT;
+	iLastStep						: INT;
+	rtExecute						: R_TRIG;
+	fbEcCoESdoRead					: FB_EcCoESdoRead;
+END_VAR
+]]></Declaration>
+    <Implementation>
+      <ST><![CDATA[IF TIME_TO_DWORD(tAutoRefreshTime) <> 0 THEN
+	tonRefreshTime(IN:= NOT tonRefreshTime.Q, PT:= tAutoRefreshTime);
+ELSE
+	tonRefreshTime(IN:= FALSE);
+END_IF
+
+rtExecute(	CLK:= bExecute OR tonRefreshTime.Q, Q=> );
+IF rtExecute.Q THEN
+	iStep										:= 0;
+END_IF
+
+
+CASE iStep OF
+	0:	// Idle
+		IF rtExecute.Q THEN
+			iLastStep							:= 0;
+			bBusy								:= TRUE;
+			bError								:= FALSE;
+			udiErrId							:= 0;
+			fbEcCoESdoRead.bExecute				:= FALSE;
+			
+			iStep								:= iStep + 10;
+		END_IF
+		
+	10:	// Read module: 	iVoltageC1
+		fbEcCoESdoRead.nIndex 					:= 16#F985;
+		fbEcCoESdoRead.nSubIndex 				:= 01;
+		fbEcCoESdoRead.pDstBuf 					:= ADR (stHardwareInfo.iVoltageC1);
+		fbEcCoESdoRead.cbBufLen 				:= SIZEOF(stHardwareInfo.iVoltageC1);
+		fbEcCoESdoRead.bExecute					:= TRUE;
+		iStep									:= iStep + 10;
+		
+	20:	// Read module: 	iVoltageC2
+		fbEcCoESdoRead.bExecute					:= FALSE;
+		IF NOT fbEcCoESdoRead.bBusy THEN
+			IF NOT fbEcCoESdoRead.bError THEN
+				fbEcCoESdoRead.nIndex 			:= 16#F984;
+				fbEcCoESdoRead.nSubIndex 		:= 01;
+				fbEcCoESdoRead.pDstBuf 			:= ADR (stHardwareInfo.iVoltageC2);
+				fbEcCoESdoRead.cbBufLen 		:= SIZEOF(stHardwareInfo.iVoltageC2);
+				fbEcCoESdoRead.bExecute			:= TRUE;
+				iStep							:= iStep + 10;
+			ELSE
+				udiErrId						:= fbEcCoESdoRead.nErrId;
+				iLastStep						:= iStep;
+				iStep							:= 900;
+			END_IF
+		END_IF
+		
+	30:	// Read module: 	iTemperatureC1
+		fbEcCoESdoRead.bExecute					:= FALSE;
+		IF NOT fbEcCoESdoRead.bBusy THEN
+			IF NOT fbEcCoESdoRead.bError THEN
+				fbEcCoESdoRead.nIndex 			:= 16#F984;
+				fbEcCoESdoRead.nSubIndex 		:= 02;
+				fbEcCoESdoRead.pDstBuf 			:= ADR (stHardwareInfo.iTemperatureC1);
+				fbEcCoESdoRead.cbBufLen 		:= SIZEOF(stHardwareInfo.iTemperatureC1);
+				fbEcCoESdoRead.bExecute			:= TRUE;
+				iStep							:= iStep + 10;
+			ELSE
+				udiErrId						:= fbEcCoESdoRead.nErrId;
+				iLastStep						:= iStep;
+				iStep							:= 900;
+			END_IF
+		END_IF
+		
+	40:	// Read module: 	iTemperatureC2
+		fbEcCoESdoRead.bExecute					:= FALSE;
+		IF NOT fbEcCoESdoRead.bBusy THEN
+			IF NOT fbEcCoESdoRead.bError THEN
+				fbEcCoESdoRead.nIndex 			:= 16#F985;
+				fbEcCoESdoRead.nSubIndex 		:= 02;
+				fbEcCoESdoRead.pDstBuf 			:= ADR (stHardwareInfo.iTemperatureC2);
+				fbEcCoESdoRead.cbBufLen 		:= SIZEOF(stHardwareInfo.iTemperatureC2);
+				fbEcCoESdoRead.bExecute			:= TRUE;
+				iStep							:= iStep + 10;
+			ELSE
+				udiErrId						:= fbEcCoESdoRead.nErrId;
+				iLastStep						:= iStep;
+				iStep							:= 900;
+			END_IF
+		END_IF
+
+
+	50:	// End procedure
+		fbEcCoESdoRead.bExecute					:= FALSE;
+		IF NOT fbEcCoESdoRead.bBusy THEN
+			IF NOT fbEcCoESdoRead.bError THEN
+				bBusy							:= FALSE;
+				iStep							:= 0;
+			ELSE
+				udiErrId						:= fbEcCoESdoRead.nErrId;
+				iLastStep						:= iStep;
+				iStep							:= 900;
+			END_IF
+		END_IF
+
+		
+		
+		
+	900:	// Error procedure
+		bBusy									:= FALSE;
+		bError									:= TRUE;
+	ELSE
+		iLastStep								:= iStep;
+		iStep									:= 900;
+END_CASE
+
+
+fbEcCoESdoRead(
+	sNetId			:= stEtherCatSlaveBasicInfos.sEtherCat_AmsNetId, 
+	nSlaveAddr		:= stEtherCatSlaveBasicInfos.stSlaveCfgData.nAddr);]]></ST>
+    </Implementation>
+    <LineIds Name="FB_HardwareInfos">
+      <LineId Id="171" Count="0" />
+      <LineId Id="168" Count="0" />
+      <LineId Id="172" Count="0" />
+      <LineId Id="175" Count="0" />
+      <LineId Id="174" Count="0" />
+      <LineId Id="169" Count="0" />
+      <LineId Id="33" Count="16" />
+      <LineId Id="106" Count="0" />
+      <LineId Id="53" Count="5" />
+      <LineId Id="78" Count="1" />
+      <LineId Id="120" Count="2" />
+      <LineId Id="80" Count="5" />
+      <LineId Id="123" Count="5" />
+      <LineId Id="86" Count="1" />
+      <LineId Id="129" Count="2" />
+      <LineId Id="88" Count="5" />
+      <LineId Id="132" Count="5" />
+      <LineId Id="94" Count="1" />
+      <LineId Id="138" Count="2" />
+      <LineId Id="96" Count="5" />
+      <LineId Id="141" Count="5" />
+      <LineId Id="107" Count="0" />
+      <LineId Id="211" Count="0" />
+      <LineId Id="108" Count="11" />
+      <LineId Id="9" Count="0" />
+      <LineId Id="102" Count="0" />
+      <LineId Id="63" Count="0" />
+      <LineId Id="103" Count="0" />
+      <LineId Id="64" Count="11" />
+      <LineId Id="62" Count="0" />
+    </LineIds>
+  </POU>
+</TcPlcObject>

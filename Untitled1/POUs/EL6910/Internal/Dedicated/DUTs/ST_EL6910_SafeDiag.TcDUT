@@ -1,0 +1,15 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4024.12">
+  <DUT Name="ST_EL6910_SafeDiag" Id="{e7c33afe-fc73-44c2-b4fe-1f26181bca40}">
+    <Declaration><![CDATA[TYPE ST_EL6910_SafeDiag :
+STRUCT
+	stBasicInfo						: ST_EtherCat_SlaveBasicInfos;									// EtherCAT slave basic infos
+	stHardwareInfo					: ST_SafeDiag_HardwareInfos;									// Internal module hardware infos
+	arrDiagHistory					: ARRAY [1.. GVL_SafetyEvents.MAX_EVENTS] OF ST_Event;			// Event Logger Listener
+	stSafetyInfo					: ST_SafeDiag_SafetyProjectInfos;								// Additional Safety informations from Logic Unit
+	stVisu							: ST_SafeDiag_VisualisationInfos;								// Internal structure to show gained informations on visualisation
+END_STRUCT
+END_TYPE
+]]></Declaration>
+  </DUT>
+</TcPlcObject>

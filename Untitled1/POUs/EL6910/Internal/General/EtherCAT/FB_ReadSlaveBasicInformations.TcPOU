@@ -1,0 +1,225 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4024.12">
+  <POU Name="FB_ReadSlaveBasicInformations" Id="{5becddc9-28b3-412f-af79-c12627a6f652}" SpecialFunc="None">
+    <Declaration><![CDATA[// ================================================================================================ //
+//							Beckhoff Automation Poland                                              //
+//									26.03.2021                                                      //
+//												                                                    //
+//					Function Block to read basic EtherCAT slave infos              					//
+//	                                                                                                //
+//	Author: Piotr Szyszka (p.szyszka@beckhoff.pl)                                           		//
+//	Requirements: Libraries Tc2_EtherCAT 			                                    			//
+//                                                                                                  //
+//  v1.1	|| TC v 3.1.4024.12		||	Optimalisations												// 
+//  v1.0	|| TC v 3.1.4024.7		|| 	First release. 												// 
+// ================================================================================================ //
+FUNCTION_BLOCK FB_ReadSlaveBasicInformations
+VAR_IN_OUT
+	stEtherCatSlaveBasicInfos	: ST_EtherCat_SlaveBasicInfos;
+END_VAR
+VAR_INPUT
+	bExecute					: BOOL;
+	sEcAmsNetId					: T_AmsNetID;						// EtherCAT master's AmsNetId
+	wSlaveAdress				: WORD;								// Certain slave adress in EtherCAT topology to get InfoData
+END_VAR
+VAR_OUTPUT
+	bBusy						: BOOL;
+	bError						: BOOL;
+	udiErrId					: UDINT;
+END_VAR
+VAR
+	iStep						: INT;
+	iLastStep					: INT;
+	rtExecute					: R_TRIG;
+	i							: INT;
+	
+	fbEcGetConfSlaves			: FB_EcGetConfSlaves;
+	fbEcGetSlaveIdentity		: FB_EcGetSlaveIdentity;
+	fbEcCoESdoRead				: FB_EcCoESdoRead;
+END_VAR
+]]></Declaration>
+    <Implementation>
+      <ST><![CDATA[rtExecute(CLK:= bExecute, Q=> );
+IF rtExecute.Q THEN
+	iStep												:= 0;
+END_IF
+
+
+CASE iStep OF
+	0:	// Idle
+		IF rtExecute.Q THEN
+			iLastStep									:= 0;
+			bBusy										:= TRUE;
+			bError										:= FALSE;
+			udiErrId									:= 0;
+			fbEcGetConfSlaves.bExecute					:= FALSE;
+			fbEcGetSlaveIdentity.bExecute				:= FALSE;
+			fbEcCoESdoRead.bExecute						:= FALSE;
+			                                    		
+			stEtherCatSlaveBasicInfos.sEtherCat_AmsNetId:= sEcAmsNetId;
+			iStep										:= iStep + 10;
+		END_IF
+		
+	10:	// Get list of configured slaves
+		fbEcGetConfSlaves.bExecute						:= TRUE;
+		iStep											:= iStep + 10;
+			
+	20:	// Get slaves identity
+		fbEcGetConfSlaves.bExecute						:= FALSE;
+		IF NOT fbEcGetConfSlaves.bBusy THEN
+			IF NOT fbEcGetConfSlaves.bError THEN
+				stEtherCatSlaveBasicInfos.wSlavesNumber	:= fbEcGetConfSlaves.nSlaves;
+				iStep									:= iStep + 10;
+			ELSE
+				udiErrId								:= fbEcGetConfSlaves.nErrorId;
+				iLastStep								:= iStep;
+				iStep									:= 900;
+			END_IF
+		END_IF
+		
+	30:	// Rewrite Slave infos		
+		FOR i:=1 TO 	stEtherCatSlaveBasicInfos.wSlavesNumber+1 	DO
+			IF wSlaveAdress = stEtherCatSlaveBasicInfos.arrEcSlaveConfigData[i].nAddr THEN
+				stEtherCatSlaveBasicInfos.stSlaveCfgData:= stEtherCatSlaveBasicInfos.arrEcSlaveConfigData[i];
+				iStep									:= iStep + 10;
+				EXIT;
+			ELSIF i=stEtherCatSlaveBasicInfos.wSlavesNumber+1 THEN	
+				iLastStep								:= iStep;
+				iStep									:= 900;	
+			END_IF
+		END_FOR
+		
+	40:	// Read module: 	Hardware version
+		fbEcCoESdoRead.nIndex 							:= 16#1009;
+		fbEcCoESdoRead.nSubIndex 						:= 0;
+		fbEcCoESdoRead.pDstBuf 							:= ADR (stEtherCatSlaveBasicInfos.sHardwareVersion);
+		fbEcCoESdoRead.cbBufLen 						:= SIZEOF(stEtherCatSlaveBasicInfos.sHardwareVersion);
+		fbEcCoESdoRead.bExecute							:= TRUE;
+		iStep											:= iStep + 10;
+				
+	50:	// Read module: 	Software version
+		fbEcCoESdoRead.bExecute							:= FALSE;
+		IF NOT fbEcCoESdoRead.bBusy THEN
+			IF NOT fbEcCoESdoRead.bError THEN
+				fbEcCoESdoRead.nIndex 					:= 16#100A;
+				fbEcCoESdoRead.nSubIndex 				:= 0;
+				fbEcCoESdoRead.pDstBuf 					:= ADR (stEtherCatSlaveBasicInfos.sSoftwareVersion);
+				fbEcCoESdoRead.cbBufLen 				:= SIZEOF(stEtherCatSlaveBasicInfos.sSoftwareVersion);
+				fbEcCoESdoRead.bExecute					:= TRUE;
+				iStep									:= iStep + 10;
+			ELSE
+				udiErrId								:= fbEcCoESdoRead.nErrId;
+				iLastStep								:= iStep;
+				iStep									:= 900;
+			END_IF
+		END_IF
+		
+	60:	// Read module: 	Safety Logic Serial No
+		fbEcCoESdoRead.bExecute							:= FALSE;
+		IF NOT fbEcCoESdoRead.bBusy THEN
+			IF NOT fbEcCoESdoRead.bError THEN
+				fbEcCoESdoRead.nIndex 					:= 16#F980;
+				fbEcCoESdoRead.nSubIndex 				:= 2;
+				fbEcCoESdoRead.pDstBuf 					:= ADR (stEtherCatSlaveBasicInfos.dwSafetyLogicSerialNo);
+				fbEcCoESdoRead.cbBufLen 				:= SIZEOF(stEtherCatSlaveBasicInfos.dwSafetyLogicSerialNo);
+				fbEcCoESdoRead.bExecute					:= TRUE;
+				iStep									:= iStep + 10;
+			ELSE
+				udiErrId								:= fbEcCoESdoRead.nErrId;
+				iLastStep								:= iStep;
+				iStep									:= 900;
+			END_IF
+		END_IF
+		
+		
+	70:	// // End procedure
+		fbEcCoESdoRead.bExecute							:= FALSE;
+		IF NOT fbEcCoESdoRead.bBusy THEN
+			IF NOT fbEcCoESdoRead.bError THEN
+				bBusy									:= FALSE;
+				iStep									:= 0;
+			ELSE
+				udiErrId								:= fbEcCoESdoRead.nErrId;
+				iLastStep								:= iStep;
+				iStep									:= 900;
+			END_IF
+		END_IF
+		
+	900:	// Error procedure
+		bBusy											:= FALSE;
+		bError											:= TRUE;
+	ELSE
+		iLastStep										:= iStep;
+		iStep											:= 900;
+END_CASE
+
+
+fbEcCoESdoRead(
+	sNetId				:= stEtherCatSlaveBasicInfos.sEtherCat_AmsNetId, 
+	nSlaveAddr			:= stEtherCatSlaveBasicInfos.stSlaveCfgData.nAddr);
+
+fbEcGetConfSlaves(
+	sNetId				:= stEtherCatSlaveBasicInfos.sEtherCat_AmsNetId, 
+	pArrEcConfSlaveInfo	:= ADR(stEtherCatSlaveBasicInfos.arrEcSlaveConfigData), 
+	cbBufLen			:= SIZEOF(stEtherCatSlaveBasicInfos.arrEcSlaveConfigData) );
+	
+]]></ST>
+    </Implementation>
+    <LineIds Name="FB_ReadSlaveBasicInformations">
+      <LineId Id="9" Count="0" />
+      <LineId Id="29" Count="0" />
+      <LineId Id="31" Count="1" />
+      <LineId Id="189" Count="0" />
+      <LineId Id="34" Count="0" />
+      <LineId Id="33" Count="0" />
+      <LineId Id="35" Count="0" />
+      <LineId Id="37" Count="0" />
+      <LineId Id="40" Count="3" />
+      <LineId Id="251" Count="0" />
+      <LineId Id="272" Count="0" />
+      <LineId Id="316" Count="0" />
+      <LineId Id="44" Count="0" />
+      <LineId Id="277" Count="0" />
+      <LineId Id="38" Count="1" />
+      <LineId Id="45" Count="1" />
+      <LineId Id="252" Count="0" />
+      <LineId Id="68" Count="0" />
+      <LineId Id="75" Count="1" />
+      <LineId Id="268" Count="0" />
+      <LineId Id="80" Count="1" />
+      <LineId Id="93" Count="0" />
+      <LineId Id="83" Count="0" />
+      <LineId Id="85" Count="3" />
+      <LineId Id="84" Count="0" />
+      <LineId Id="82" Count="0" />
+      <LineId Id="100" Count="0" />
+      <LineId Id="102" Count="0" />
+      <LineId Id="565" Count="8" />
+      <LineId Id="564" Count="0" />
+      <LineId Id="170" Count="0" />
+      <LineId Id="319" Count="0" />
+      <LineId Id="358" Count="4" />
+      <LineId Id="320" Count="0" />
+      <LineId Id="369" Count="0" />
+      <LineId Id="386" Count="14" />
+      <LineId Id="371" Count="0" />
+      <LineId Id="401" Count="0" />
+      <LineId Id="497" Count="14" />
+      <LineId Id="496" Count="0" />
+      <LineId Id="494" Count="1" />
+      <LineId Id="403" Count="10" />
+      <LineId Id="402" Count="0" />
+      <LineId Id="77" Count="0" />
+      <LineId Id="94" Count="3" />
+      <LineId Id="99" Count="0" />
+      <LineId Id="98" Count="0" />
+      <LineId Id="36" Count="0" />
+      <LineId Id="188" Count="0" />
+      <LineId Id="49" Count="2" />
+      <LineId Id="48" Count="0" />
+      <LineId Id="255" Count="3" />
+      <LineId Id="254" Count="0" />
+      <LineId Id="266" Count="1" />
+    </LineIds>
+  </POU>
+</TcPlcObject>

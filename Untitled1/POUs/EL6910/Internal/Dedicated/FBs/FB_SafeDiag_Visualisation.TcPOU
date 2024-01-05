@@ -1,0 +1,83 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4024.12">
+  <POU Name="FB_SafeDiag_Visualisation" Id="{583ea804-71d1-4d80-85fb-38accd0a9720}" SpecialFunc="None">
+    <Declaration><![CDATA[// ================================================================================================ //
+//							Beckhoff Automation Poland                                              //
+//									26.03.2021                                                      //
+//												                                                    //
+//				Function Block to visualise all gained safety module diag data.						//
+//				Function Block works with EL6910, EL2911, EK1960									//
+//                                                                                                  //
+//	                                                                                                //
+//	Author: Piotr Szyszka (p.szyszka@beckhoff.pl) 													//
+//	Requirements: Libraries Tc2_EtherCAT				                                   			//
+//                                                                                                  //
+//  v1.0	|| TC v 3.1.4024.12		||	First release												// 
+// ================================================================================================ //
+FUNCTION_BLOCK FB_SafeDiag_Visualisation
+VAR_IN_OUT
+	stSafeDiag						: ST_EL6910_SafeDiag;			// Strcture with all informations about EL6910
+END_VAR
+VAR_INPUT
+	bRefresh						: BOOL;
+	tAutoRefreshTime				: TIME		:= T#5S;	// Time to auto-refresh data. Use 0 to disable.
+END_VAR
+VAR_OUTPUT
+END_VAR
+VAR
+	wAddr							:WORD;
+	tonRefreshTime					: TON;
+	bFillBasicInfo					: BOOL	:= TRUE;
+	i								: INT;
+END_VAR
+]]></Declaration>
+    <Implementation>
+      <ST><![CDATA[tonRefreshTime(IN:= NOT tonRefreshTime.Q, PT:= tAutoRefreshTime, Q=> , ET=> );
+
+IF tonRefreshTime.Q OR bRefresh THEN
+	// ST_EtherCat_SlaveBasicInfos
+	IF bFillBasicInfo OR (wAddr<>stSafeDiag.stBasicInfo.stSlaveCfgData.nAddr) THEN
+		stSafeDiag.stVisu.arrBasicInfos[2,1]			:= stSafeDiag.stBasicInfo.sEtherCat_AmsNetId;
+		stSafeDiag.stVisu.arrBasicInfos[2,2]			:= WORD_TO_STRING(stSafeDiag.stBasicInfo.stSlaveCfgData.nAddr);
+		stSafeDiag.stVisu.arrBasicInfos[2,3]			:= stSafeDiag.stBasicInfo.stSlaveCfgData.sName;
+		stSafeDiag.stVisu.arrBasicInfos[2,4]			:= stSafeDiag.stBasicInfo.sHardwareVersion;
+		stSafeDiag.stVisu.arrBasicInfos[2,5]			:= stSafeDiag.stBasicInfo.sSoftwareVersion;
+		stSafeDiag.stVisu.arrBasicInfos[2,6]			:= DWORD_TO_STRING(stSafeDiag.stBasicInfo.stSlaveCfgData.stSlaveIdentity.vendorId); 
+		stSafeDiag.stVisu.arrBasicInfos[2,7]			:= CONCAT('0x', 	DWORD_TO_HEXSTR(	in	:= stSafeDiag.stBasicInfo.stSlaveCfgData.stSlaveIdentity.productCode, iPrecision :=  8, 	bLoCase := FALSE));
+		stSafeDiag.stVisu.arrBasicInfos[2,8]			:= CONCAT('0x', 	DWORD_TO_HEXSTR(	in	:= stSafeDiag.stBasicInfo.stSlaveCfgData.stSlaveIdentity.revisionNo, 	iPrecision :=  8, 	bLoCase := FALSE)); 
+		stSafeDiag.stVisu.arrBasicInfos[2,9]			:= CONCAT('0x', 	DWORD_TO_HEXSTR(	in	:= stSafeDiag.stBasicInfo.dwSafetyLogicSerialNo, 	iPrecision :=  8, 	bLoCase := FALSE));
+		stSafeDiag.stVisu.sModelNumber				:= MID(stSafeDiag.stBasicInfo.stSlaveCfgData.sName,6,(FIND(stSafeDiag.stBasicInfo.stSlaveCfgData.sName,'(')+1));
+		wAddr										:=stSafeDiag.stBasicInfo.stSlaveCfgData.nAddr;
+		FOR i := 1 TO 9 DO
+			IF stSafeDiag.stVisu.arrBasicInfos[2, i] = '' THEN
+				EXIT;
+			ELSE
+				IF i = 9 THEN
+					bFillBasicInfo					:= FALSE;
+				END_IF
+			END_IF
+		END_FOR
+	END_IF
+	
+	
+	// ST_SafeDiag_HardwareInfos
+		stSafeDiag.stVisu.arrHardwareInfos[2,1]		:= INT_TO_STRING(stSafeDiag.stHardwareInfo.iVoltageC1);
+		stSafeDiag.stVisu.arrHardwareInfos[2,2]       := INT_TO_STRING(stSafeDiag.stHardwareInfo.iVoltageC2);
+		stSafeDiag.stVisu.arrHardwareInfos[2,3]       := INT_TO_STRING(stSafeDiag.stHardwareInfo.iTemperatureC1);
+		stSafeDiag.stVisu.arrHardwareInfos[2,4]       := INT_TO_STRING(stSafeDiag.stHardwareInfo.iTemperatureC2);
+	
+	// ST_SafeDiag_SafetyProjectInfos
+		stSafeDiag.stVisu.arrSafetyInfos[2,1]			:= WORD_TO_STRING(stSafeDiag.stSafetyInfo.wSafeLogicState);
+		stSafeDiag.stVisu.arrSafetyInfos[2,2]			:= TO_STRING(stSafeDiag.stSafetyInfo.eSafeLogicState);
+		stSafeDiag.stVisu.arrSafetyInfos[2,3]			:= WORD_TO_STRING(stSafeDiag.stSafetyInfo.wCycleCounter);
+		
+END_IF
+
+]]></ST>
+    </Implementation>
+    <LineIds Name="FB_SafeDiag_Visualisation">
+      <LineId Id="482" Count="40" />
+      <LineId Id="265" Count="0" />
+    </LineIds>
+  </POU>
+</TcPlcObject>
