@@ -58,7 +58,7 @@ Detailed information on operation can be found in the "EventLogger Safety" manua
 
 ### Example of using the SafeDiag block
 
-![image-20240424100729908](C:\Users\ChristopherW\AppData\Roaming\Typora\typora-user-images\image-20240424100729908.png)
+![](images/image2.jpg)
 
 The screenshot above shows the FB_SafeDiag_Diagnostic block with the connections necessary for operation. The stSafeDiag structure of the ST_SafeDiag type is provided together with the function block and stores data downloaded from the module.
 
@@ -68,7 +68,7 @@ The method of obtaining AmsNetId, Slave Address and Module_GUID is presented in 
 
 Data from the stSafeDiag structure can later be used, for example, to visualize the diagnostic window of the EL2911 safety module.
 
-![](C:/repos/TwinSAFE_EL6910_DiagHistory/media/image5.emf)
+![](images/image3.jpg)
 
 ### Function block configuration
 
@@ -76,13 +76,13 @@ Data from the stSafeDiag structure can later be used, for example, to visualize 
 
 The easiest way to obtain the AmsNetId address of a device is to scan the devices and read it from the I/O-\>Devices tab of the Solution Explorer window after selecting the appropriate EtherCAT device.
 
-![](C:/repos/TwinSAFE_EL6910_DiagHistory/media/image6.emf)
+![](images/image4.jpg)
 
 #### Slave Address
 
 Slave Address is obtained similarly to AmsNetId, but concerns a specific module (Term).
 
-![](C:/repos/TwinSAFE_EL6910_DiagHistory/media/image7.emf)
+![](images/image5.jpg)
 
 ### GUID
 
@@ -90,13 +90,13 @@ Slave Address is obtained similarly to AmsNetId, but concerns a specific module 
 
 To obtain the module name, expand the I/O branch and copy the module name.
 
-![](C:/repos/TwinSAFE_EL6910_DiagHistory/media/image8.emf)
+![](images/image6.jpg)
 
 #### Obtaining the GUID of the Safety module
 
 The GUID of the Safety module class is saved in the file C:\TwinCAT\3.1\Boot\CurrentEventMessages.xml when the configuration is activated. To obtain it, open the file in any editor and copy the GUID for the appropriate module, as in the photo below:
 
-![](C:/repos/TwinSAFE_EL6910_DiagHistory/media/image9.emf)
+![](images/image7.jpg)
 
 Important!
 
@@ -107,6 +107,8 @@ The GUID may be different for modules of the same type, so it must be checked fo
 Diagnostic data from the block is returned to the ST_SafeDiag type structure. This structure consists of the following substructures:
 
 Substructures store the following data:
+
+![](images/image8.jpg)
 
 | **Variable Name**                              | **Type**                                 | **Sample Value** | **Description**                                              |
 | ---------------------------------------------- | ---------------------------------------- | ---------------- | ------------------------------------------------------------ |
@@ -154,14 +156,4 @@ Substructures store the following data:
 
 Should you have any questions regarding the provided sample code, please contact your local Beckhoff support team. Contact information can be found on the official Beckhoff website at https://www.beckhoff.com/en-us/support/.
 
-# Further Information
 
--- UPDATE THIS SECTION -- 
-Further Information on -- THIS REPO TOPIC -- can be found at the [Beckhoff Infosys](https://infosys.beckhof.com) under the [REPO TOPIC](https://infosys.beckhoff.com/content/1033/ethercatsystem/2469077771.html?id=8287668039751154112)
-
-## Requirements
-
-The following components must be installed to run sample code:
-
-- [TE1000 TwinCAT 3 Engineering](https://www.beckhoff.com/en-en/products/automation/twincat/te1xxx-twincat-3-engineering/te1000.html) version 3.1.4024.0 or higher
-- -- UPDATE THIS SECTION --
