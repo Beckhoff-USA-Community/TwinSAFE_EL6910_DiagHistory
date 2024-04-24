@@ -10,30 +10,6 @@ The document below contains an example of the use of the product and a set of re
 
 FB_SafeDiag Beckhoff block configuration instructions
 
-### Contents
-
-[1 Function block description [2](#function-block-description)](#function-block-description)
-
-[1.1 Data downloaded after CoE [2](#data-downloaded-after-coe)](#data-downloaded-after-coe)
-
-[1.2 EventLogger and Diag History data [2](#eventlogger-and-diag-history-data)](#eventlogger-and-diag-history-data)
-
-[1.3 Example of using the SafeDiag block [3](#example-of-using-the-safediag-block)](#example-of-using-the-safediag-block)
-
-[2 Function block configuration [3](#function-block-configuration)](#function-block-configuration)
-
-[2.1 AmsNetId [3](#amsnetid)](#amsnetid)
-
-[2.2 Slave Address [4](#slave-address)](#slave-address)
-
-[2.3 Guide [4](#guid)](#guid)
-
-[2.3.1 Obtaining the module name from I/O [4](#obtaining-the-module-name-from-io)](#obtaining-the-module-name-from-io)
-
-[2.3.2 Obtaining the GUID of the Safety module [5](#obtaining-the-guid-of-the-safety-module)](#obtaining-the-guid-of-the-safety-module)
-
-[3 The structure of the returned data [5](#the-structure-of-the-returned-data)](#the-structure-of-the-returned-data)
-
 ### Function block description
 
 The purpose of the SafeDiag function block is to facilitate the diagnosis of the EL6910, EL2911 safety modules and the EK1960 series of modules. The data returned by the block is assigned to a structure of the ST_SafeDiag type.
