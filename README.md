@@ -44,7 +44,7 @@ The operation of the block is based on downloading data from the indicated modul
 
 The data made available via the CoE interface of each module can be viewed in the CoE - Online tab after selecting the module of interest from the I/O tab of the Solution Explorer window. The SafeDiag block automatically downloads predefined data from this interface - more information about the downloaded data will be described in the "Structure of returned data" chapter.
 
-![](https://github.com/Beckhoff-USA-Community/TwinSAFE_EL6910_DiagHistory/blob/main/images/Picture1.png)
+![](images/Picture1.png)
 
 ### EventLogger and Diag History data
 
