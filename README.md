@@ -132,4 +132,11 @@ Substructures store the following data:
 
 Should you have any questions regarding the provided sample code, please contact your local Beckhoff support team. Contact information can be found on the official Beckhoff website at https://www.beckhoff.com/en-us/support/.
 
+# History
 
+v2.0	TC v 3.1.4024.12	FB uses Event Listener to get EL6910 Diag Messages
+v1.0	TC v 3.1.4024.7	  First release. Library uses ESI file to find Diag History Message via JSON lib. 
+
+# Requirements
+
+Libraries Tc2_EtherCAT, TC2_Utilities 

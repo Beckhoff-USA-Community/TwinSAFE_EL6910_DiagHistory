@@ -3,8 +3,8 @@
   <POU Name="P_Sample" Id="{40f4095b-58b8-4f55-820b-3c5d26950fec}" SpecialFunc="None">
     <Declaration><![CDATA[PROGRAM P_Sample
 VAR CONSTANT
-	sNetID						: T_AmsNetId 	:= '5.36.73.62.2.1'; // EtherCAT Master AMS NetID
-	sModule_GUID				: STRING(36)	:= '28111931-0002-0000-5230-FE1A00001100';
+	sNetID						: T_AmsNetId 	:= '5.125.236.17.2.1'; // EtherCAT Master AMS NetID
+	sModule_GUID				: STRING(36)	:= '28111931-0002-0000-5230-FE1A00001500';
 END_VAR
 VAR
 	fbSafeDiag_Diagnostic		: FB_SafeDiag_Diagnostic;
@@ -75,7 +75,7 @@ END_VAR]]></Declaration>
                     <o n="Text" t="CFCText">
                       <v n="Bounds">"0, 0, 0, 0"</v>
                       <n n="ElementGroupId" />
-                      <v n="Text">"1005"</v>
+                      <v n="Text">"1001"</v>
                       <v n="Modifiable">true</v>
                       <v n="Id">435L</v>
                     </o>

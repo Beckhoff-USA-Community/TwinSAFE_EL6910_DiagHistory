@@ -13,8 +13,7 @@
 //						the actual EStopIn-values are 0x0000'                                       //
 //                                                                                                  //
 //	All data are localised in safety modules           												//
-//	                                                                                                //
-//	Author: Piotr Szyszka (p.szyszka@beckhoff.pl)                                           		//
+//	                                                                                                //                         		//
 //	Requirements: Libraries Tc2_EtherCAT, TC2_Utilities                                    			//
 //                                                                                                  //
 //  v2.0	|| TC v 3.1.4024.12		||	FB uses Event Listener to get EL6910 Diag Messages			// 

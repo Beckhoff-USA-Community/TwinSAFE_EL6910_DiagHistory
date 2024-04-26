@@ -37,7 +37,11 @@
             <v n="GuidShowChangeConfigDialogFunction">{00000000-0000-0000-0000-000000000000}</v>
             <v n="UseStandardKeyboardHandling">true</v>
             <v n="PaintDeactiveElementsGrayedOut">true</v>
-            <n n="GlobalOpenNumpadKeypadSettings" />
+            <o n="GlobalOpenNumpadKeypadSettings" t="VisualManagerGlobalOpenNumpadKeypadSettings">
+              <v n="GlobalOpenNumpadKeypadType" t="GlobalOpenNumpadKeypadType">OpenCentered</v>
+              <n n="PositionX" />
+              <n n="PositionY" />
+            </o>
             <v n="ConvertImages">false</v>
             <v n="ConversionType">""</v>
           </o>
@@ -50,7 +54,7 @@
               <v>FB_Reinit</v>
               <v>16eaee4d-2ae4-4c19-a709-fa35bf4f8230</v>
             </d>
-            <v n="FbName">"NotImportant"</v>
+            <v n="FbName">"__VisuInitInstantiation_Fb"</v>
             <v n="FbGuid">{49f8ced9-6374-4475-a9cf-c9d0a9355095}</v>
           </o>
           <o n="TargetProperties" t="VisualizationTargetProperties">
@@ -554,6 +558,7 @@
         <Type n="DeviceBasedHotkeyItem">{11a86981-4b02-4f98-b432-96e385cb41b7}</Type>
         <Type n="DeviceBasedHotkeysProvider">{c91fc5aa-1e38-43b2-9a05-c52cc5d7f5b6}</Type>
         <Type n="GenericFbDescription">{40d6dd8d-dfd0-493a-8e29-c9a35e1e6539}</Type>
+        <Type n="GlobalOpenNumpadKeypadType">{550f8ee0-c42e-42f0-b253-4fadf0c12bdf}</Type>
         <Type n="Guid">System.Guid</Type>
         <Type n="HotkeyConfiguration">{6b108d46-58af-4e41-a3f4-174d8f160cc4}</Type>
         <Type n="Int32">System.Int32</Type>
@@ -562,6 +567,7 @@
         <Type n="UnicodeSupport">{19611221-ebd3-4607-86d2-9822fbe84c30}</Type>
         <Type n="VisualClientSizeMode">{c37fe731-4f69-4d98-82fe-4f9aefbe200d}</Type>
         <Type n="VisualizationTargetProperties">{997fedbb-1888-4256-b61c-2933d8056bfd}</Type>
+        <Type n="VisualManagerGlobalOpenNumpadKeypadSettings">{422ed780-41e9-4352-8132-b322b16154c1}</Type>
         <Type n="VisualManagerObject">{4d3fdb8f-ab50-4c35-9d3a-d4bb9bb9a628}</Type>
         <Type n="VisualManagerViewSettings">{ec9b2ec6-92a2-4856-be72-7866fb274c64}</Type>
       </TypeList>
@@ -585,7 +591,7 @@
               <v n="UseScalingOptionsForDialogs">true</v>
               <v n="HideCursor">false</v>
               <v n="UseTitlebar">false</v>
-              <v n="StartTargetvisu">true</v>
+              <v n="StartTargetvisu">false</v>
               <v n="WindowWidth">-1</v>
               <v n="WindowHeight">-1</v>
               <v n="ClientName">""</v>
