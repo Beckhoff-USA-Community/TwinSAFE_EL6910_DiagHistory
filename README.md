@@ -2,6 +2,8 @@
 
 This sample is created by [Beckhoff Automation LLC.](https://www.beckhoff.com/en-us/), and is provided as-is under the Zero-Clause BSD license.
 
+This TwinSAFE Diagnostics sample utilizes the TwinCAT 3 Event Logger library as well as the TC2_EtherCAT library to read a variety of diagnostic data from TwinSAFE terminals. The TwinCAT 3 Event Logger is an interface for the exchange of diagnostic messages. TwinSAFE terminals automatically send diagnostic messages to the TwinCAT 3 Event Logger when they are configured in a TwinCAT project. This project contains sample code showing how to use the filter function of the TC3 Event Logger to read TwinSAFE specific diagnostics messages and view them with TwinCAT PLC HMI. 
+
 Attention!
 
 The document below contains an example of the use of the product and a set of recommendations and good practices. It is for training purposes only and requires further modification before being used in a real application. The author of the document bears no responsibility for improper use of the product. This document in no way replaces the technical documentation available online at https://infosys.bekhoff.com.
