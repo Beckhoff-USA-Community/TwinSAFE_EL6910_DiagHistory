@@ -142,3 +142,4 @@ v1.0	TC v 3.1.4024.7	  First release. Library uses ESI file to find Diag History
 # Requirements
 
 Libraries Tc2_EtherCAT, TC2_Utilities 
+This sample was built in TC v 3.1.4024.44; Safety Editor v 1.4.6
